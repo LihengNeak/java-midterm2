@@ -1,0 +1,96 @@
+import javax.persistence.*;
+
+@Entity
+public class Product {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+    
+    private String name;
+    private double pricePerUnit;
+    private boolean activeForSell;
+
+    // Getters and Setters
+    // ...
+}
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface ProductRepository extends JpaRepository<Product, Integer> {
+}
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class ProductService {
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    public Product addProduct(Product product) {
+        return productRepository.save(product);
+    }
+
+    public Optional<Product> findProductById(int id) {
+        return productRepository.findById(id);
+    }
+
+    public List<Product> getAllProducts() {
+        return productRepository.findAll();
+    }
+
+    public Product updateProduct(int id, Product updatedProduct) {
+        return productRepository.findById(id)
+                .map(product -> {
+                    product.setName(updatedProduct.getName());
+                    product.setPricePerUnit(updatedProduct.getPricePerUnit());
+                    product.setActiveForSell(updatedProduct.isActiveForSell());
+                    return productRepository.save(product);
+                })
+                .orElseGet(() -> {
+                    updatedProduct.setId(id);
+                    return productRepository.save(updatedProduct);
+                });
+    }
+}
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/products")
+public class ProductController {
+
+    @Autowired
+    private ProductService productService;
+
+    @PostMapping
+    public ResponseEntity<Product> addProduct(@RequestBody Product product) {
+        Product savedProduct = productService.addProduct(product);
+        return ResponseEntity.ok(savedProduct);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Product> findProductById(@PathVariable int id) {
+        Optional<Product> product = productService.findProductById(id);
+        return product.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping
+    public List<Product> getAllProducts() {
+        return productService.getAllProducts();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Product> updateProduct(@PathVariable int id, @RequestBody Product updatedProduct) {
+        Product savedProduct = productService.updateProduct(id, updatedProduct);
+        return ResponseEntity.ok(savedProduct);
+    }
+}
